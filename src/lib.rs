@@ -1,5 +1,6 @@
 //! gd-rs crate for Geometry dash
-   
+
+pub mod traits;
 pub mod consts;
 pub mod easings;
 pub mod prelude;
@@ -13,9 +14,9 @@ mod tests {
         let cclevels = GDCCLocalLevels::new().unwrap();
         let level = cclevels.get(&"ok".to_string()).unwrap();
         let obj = level.objects.get(0).unwrap();
-        let _out = obj.as_string();
         println!("{};{}", level.get_level_start(), level.get_object_string());
         println!("{}", level.get_inner_level_string());
+        println!("x {}", obj.g)
         // println!("{:?}", cclevels.get_raw(&"CHALLENGE".to_string()));
     }
 }

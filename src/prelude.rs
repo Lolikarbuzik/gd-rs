@@ -1,5 +1,5 @@
 use crate::consts::*;
-// use crate::easings::*;
+use crate::traits::*;
 use crate::util::*;
 use base64::{engine::general_purpose, Engine as _};
 use directories::BaseDirs;
@@ -7,30 +7,6 @@ use libflate::gzip::Decoder;
 use plist;
 use serde_derive::Deserialize;
 use std::{collections::HashMap, fs};
-
-trait GDBool {
-    // Takes str 0/1 and converts into bool
-    fn from_str(text: &str) -> bool;
-    // Returns the boolean representation in binary 0/1
-    fn as_str(&self) -> &str; 
-}
-
-impl GDBool for bool {
-    fn from_str(text: &str) -> bool {
-        if text == "1" {
-            return true;
-        }
-        
-        return false;
-    }
-
-    fn as_str(&self) -> &str {
-        if *self == true {
-            return "1";
-        }
-        return "0";
-    }
-}
 
 type BoxERR = Box<dyn std::error::Error>;
 
@@ -58,7 +34,6 @@ pub struct GDObject {
 #[allow(dead_code)]
 impl GDObject {
     pub fn as_string(&self) -> String {
-        
         let mut props = self.props.clone();
         props.insert("1".to_string(), self.id.to_string());
         props.insert("2".to_string(), self.x.to_string());
@@ -81,11 +56,30 @@ impl GDObject {
         return out;
     }
 
+    pub fn set_prop<V>(&mut self, key: &str, value: V) -> Option<String> where V: GDProperty
+    {
+        for (ik, nk) in GD_PROPS_MAP {
+            if nk == key {
+                return self.props.insert(ik.to_string(), value.as_gd_string());
+            }
+        }
+        panic!("Invalid key {key} with {}", value.as_gd_string());
+    }
+
     pub fn get_prop(&self, key: &str, def: &str) -> String {
+        for (ik, nk) in GD_PROPS_MAP {
+            if nk == key {
+                return self.props.get(nk).unwrap_or(&def.to_string()).clone();
+            }
+        }
+        panic!("Invalid key {key}");
+    }
+
+    pub fn get_raw_prop(&self, key: &str, def: &str) -> String {
         self.props.get(key).unwrap_or(&def.to_string()).clone()
     }
 
-    pub fn set_prop(&mut self, k: &str, v: String) -> Option<String> {
+    pub fn set_raw_prop(&mut self, k: &str, v: String) -> Option<String> {
         self.props.insert(k.to_string(), v)
     }
 }
@@ -131,12 +125,12 @@ impl GDLocalLevel {
         let mut props = Vec::new();
         
         props.push(format!("kA2,{}", self.mode.as_string())); // gamemode
-        props.push(format!("kA3,{}", self.mini_mode.as_str()));
+        props.push(format!("kA3,{}", self.mini_mode.as_gd_string()));
         props.push(format!("kA4,{}", self.speed.to_string())); // speed
-        props.push(format!("kA8,{}", self.dual_mode.as_str()));
-        props.push(format!("kA10,{}",self.player_mode2.as_str()));
-        props.push(format!("kA11,{}", self.flip_gravity.as_str()));
-        props.push(format!("kA22,{}", self.platformer_mode.as_str()));
+        props.push(format!("kA8,{}", self.dual_mode.to_string()));
+        props.push(format!("kA10,{}",self.player_mode2.as_gd_string()));
+        props.push(format!("kA11,{}", self.flip_gravity.as_gd_string()));
+        props.push(format!("kA22,{}", self.platformer_mode.as_gd_string()));
 
         return props.join(",");
     }
@@ -393,21 +387,19 @@ impl GDRawLocalLevel {
         for objhash in os_map {
             let mut obj = GDObject::default();
             obj.props = objhash.clone();
-            if !obj.get_prop("33", "").is_empty() {
-                obj.group_id.push(obj.get_prop("33", "0").parse::<u16>().unwrap());
-            } else if !obj.get_prop("57", "").is_empty() {
-                let val = obj.get_prop("57", "");
+            if !obj.get_prop("single_group", "").is_empty() {
+                obj.group_id.push(obj.get_prop("single_group", "0").parse::<u16>().unwrap());
+            } else if !obj.get_prop("groups", "").is_empty() {
+                let val = obj.get_prop("groups", "");
                 let arr = val.split(".");
                 for value in arr {
                     obj.group_id.push(value.parse::<u16>().unwrap());
                 }
             }
-            // TODO add group id integer arr
-            // obj.group_id = obj.get_prop("57", "0").parse::<u16>().unwrap_or_default();
-            obj.id = obj.get_prop("1", "0").parse::<u16>().unwrap_or_default();
-            obj.x = obj.get_prop("2", "0").parse::<f32>().unwrap_or_default();
-            obj.y = obj.get_prop("3", "0").parse::<f32>().unwrap_or_default();
-            obj.rotation = obj.get_prop("6", "0").parse::<f32>().unwrap_or_default();
+            obj.id = obj.get_prop("id", "0").parse::<u16>().unwrap_or_default();
+            obj.x = obj.get_prop("x", "0").parse::<f32>().unwrap_or_default();
+            obj.y = obj.get_prop("y", "0").parse::<f32>().unwrap_or_default();
+            obj.rotation = obj.get_prop("rotation", "0").parse::<f32>().unwrap_or_default();
             this.objects.push(obj);
         }
 
