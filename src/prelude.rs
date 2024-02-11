@@ -17,6 +17,8 @@ pub enum GDObjectHitbox {
     Triangle(f32, f32)
 }
 
+
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GDObject {
     // id of an object
@@ -56,6 +58,20 @@ impl GDObject {
         return out;
     }
 
+    pub fn partial_get_prop<V: GDProperty>(&self, key: &str) -> Option<V> {
+        for (ik, nk) in GD_PROPS_MAP {
+            if nk == key {
+                if let Some(val) = self.props.get(ik) {
+                    return Some(V::from_gd_string(val));
+                }
+                return None
+            }
+        }
+        None
+    }
+
+    // Sets the property `key` to `value` that has trait GDProperty(for <V>.as_gd_string fn) panics
+    // if key doesnt exist
     pub fn set_prop<V>(&mut self, key: &str, value: V) -> Option<String> where V: GDProperty
     {
         for (ik, nk) in GD_PROPS_MAP {
@@ -66,19 +82,26 @@ impl GDObject {
         panic!("Invalid key {key} with {}", value.as_gd_string());
     }
 
-    pub fn get_prop(&self, key: &str, def: &str) -> String {
+    // Gets the property `key` and returns it or `def` panics if the key doesnt exist
+    pub fn get_prop<V: GDProperty>(&self, key: &str, def: &str) -> V {
         for (ik, nk) in GD_PROPS_MAP {
             if nk == key {
-                return self.props.get(nk).unwrap_or(&def.to_string()).clone();
+                let value = self.partial_get_prop::<V>(key);
+                if let Some(v) = value {
+                    return v;
+                }
+                return V::from_gd_string(&def.to_string());
             }
         }
         panic!("Invalid key {key}");
     }
 
+    // Its just self.props.get that retursn `value` or `def`
     pub fn get_raw_prop(&self, key: &str, def: &str) -> String {
         self.props.get(key).unwrap_or(&def.to_string()).clone()
     }
 
+    // Its just self.props.insert
     pub fn set_raw_prop(&mut self, k: &str, v: String) -> Option<String> {
         self.props.insert(k.to_string(), v)
     }
@@ -272,6 +295,7 @@ pub struct GDRawLocalLevel {
         #[serde(rename = "k38")]
         pub isunlocked: Option<String>,
         #[serde(rename = "k39")]
+    // TODO try to parse the value with a generic to convert to
         pub level_size: Option<u32>,
         #[serde(rename = "k40")]
         pub build_version: Option<u32>,
@@ -387,19 +411,18 @@ impl GDRawLocalLevel {
         for objhash in os_map {
             let mut obj = GDObject::default();
             obj.props = objhash.clone();
-            if !obj.get_prop("single_group", "").is_empty() {
-                obj.group_id.push(obj.get_prop("single_group", "0").parse::<u16>().unwrap());
-            } else if !obj.get_prop("groups", "").is_empty() {
-                let val = obj.get_prop("groups", "");
+            if let Some(sgroup) = obj.partial_get_prop::<u16>("single_group") {
+                obj.group_id.push(sgroup);
+            } else if let Some(val) = obj.partial_get_prop::<String>("groups") {
                 let arr = val.split(".");
                 for value in arr {
                     obj.group_id.push(value.parse::<u16>().unwrap());
                 }
             }
-            obj.id = obj.get_prop("id", "0").parse::<u16>().unwrap_or_default();
-            obj.x = obj.get_prop("x", "0").parse::<f32>().unwrap_or_default();
-            obj.y = obj.get_prop("y", "0").parse::<f32>().unwrap_or_default();
-            obj.rotation = obj.get_prop("rotation", "0").parse::<f32>().unwrap_or_default();
+            obj.id = obj.get_prop::<u16>("id", "0");
+            obj.x = obj.get_prop::<f32>("x", "0");
+            obj.y = obj.get_prop::<f32>("y", "0");
+            obj.rotation = obj.get_prop::<f32>("rotation", "0");
             this.objects.push(obj);
         }
 

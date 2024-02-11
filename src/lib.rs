@@ -16,7 +16,7 @@ mod tests {
         let obj = level.objects.get(0).unwrap();
         println!("{};{}", level.get_level_start(), level.get_object_string());
         println!("{}", level.get_inner_level_string());
-        println!("x {}", obj.g)
+        println!("x {:?}", obj.partial_get_prop::<f32>("ahdah"))
         // println!("{:?}", cclevels.get_raw(&"CHALLENGE".to_string()));
     }
 }
