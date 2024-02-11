@@ -3,6 +3,9 @@
 # The crate is in development
 ## If you have any questions dm me on discord @lolikarbuzik
 
+# Docs
+For documentation go to [docs](https://docs.rs/gd-rs/latest/gd_rs/)
+
 # Getting started
 Install the crate
 ```

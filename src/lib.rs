@@ -1,4 +1,8 @@
-//! gd-rs crate for Geometry dash
+//! This crate is not finished!
+//! A rust crate for reading/modifying geometry dash files
+//! Contact me on discord @lolikarbuzik if you have any questions
+//! Report issues on the github page
+//! https://github.com/Lolikarbuzik/gd-rs
 
 pub mod traits;
 pub mod consts;

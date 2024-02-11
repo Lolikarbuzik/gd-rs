@@ -84,16 +84,11 @@ impl GDObject {
 
     // Gets the property `key` and returns it or `def` panics if the key doesnt exist
     pub fn get_prop<V: GDProperty>(&self, key: &str, def: &str) -> V {
-        for (ik, nk) in GD_PROPS_MAP {
-            if nk == key {
-                let value = self.partial_get_prop::<V>(key);
-                if let Some(v) = value {
-                    return v;
-                }
-                return V::from_gd_string(&def.to_string());
-            }
+        let value = self.partial_get_prop::<V>(key);
+        if let Some(v) = value {
+            return v;
         }
-        panic!("Invalid key {key}");
+        return V::from_gd_string(&def.to_string());
     }
 
     // Its just self.props.get that retursn `value` or `def`
@@ -147,7 +142,7 @@ impl GDLocalLevel {
     pub fn get_level_start(&self) -> String {
         let mut props = Vec::new();
         
-        props.push(format!("kA2,{}", self.mode.as_string())); // gamemode
+        props.push(format!("kA2,{}", self.mode.as_gd_string())); // gamemode
         props.push(format!("kA3,{}", self.mini_mode.as_gd_string()));
         props.push(format!("kA4,{}", self.speed.to_string())); // speed
         props.push(format!("kA8,{}", self.dual_mode.to_string()));
@@ -207,8 +202,8 @@ impl From<u16> for GDLevelMode {
     }
 }
 
-impl GDLevelMode {
-    fn as_string(self) -> String {
+impl GDProperty for GDLevelMode {
+    fn as_gd_string(&self) -> String {
         let v = match self {
             GDLevelMode::Ship => 1,
             GDLevelMode::Ball => 2,
@@ -221,6 +216,10 @@ impl GDLevelMode {
         };
 
         return v.to_string();
+    }
+
+    fn from_gd_string(value: &String) -> Self {
+        Self::from(value.parse::<u16>().unwrap_or_default())
     }
 }
 
@@ -383,7 +382,7 @@ pub struct GDRawLocalLevel {
         pub leaderboard_percentage: Option<u32>,
 }
 impl GDRawLocalLevel {
-    fn into(self) -> Result<GDLocalLevel, BoxERR> {
+    pub fn as_raw(self) -> Result<GDLocalLevel, BoxERR> {
         let b64_dec = general_purpose::URL_SAFE.decode(self.inner_level_string.clone())?;
         let mut decoder = Decoder::new(&b64_dec[..])?;
         let mut unzipped = Vec::new();
@@ -500,7 +499,7 @@ impl GDCCLocalLevels {
                     let parse_res = plist::from_value::<GDRawLocalLevel>(data);
                     if let Ok(rllevel) = parse_res {
                         this.raw_levels.push(rllevel.clone());
-                        this.levels.push(rllevel.into()?);
+                        this.levels.push(rllevel.as_raw()?);
                     } else if let Err(e) = parse_res {
                        let name = data
                             .as_dictionary()
